@@ -6,19 +6,98 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>HTML 5 Boilerplate</title>
     <link rel="stylesheet" href="/stylesheets/style.css" />
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- CSS only -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.socket.io/4.5.3/socket.io.min.js"
+      integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi"
+      crossorigin="anonymous"
+    ></script>
     <script>
       const socket = io();
       socket.on("connect", () => {
         socket.emit("event1", "hello kw!");
       });
-      socket.on("msg", (data) => {
-        console.log(data);
+
+      socket.on("getID", (data) => {
+        document
+          .getElementById("myid")
+          .appendChild(
+            document
+              .createElement("p")
+              .appendChild(document.createTextNode(`MY ID: ${data}`))
+          );
       });
+
+      socket.on("msg", (data) => {
+        let log = document.getElementById("msg");
+        let ptag = document.createElement("p");
+        let node = document.createTextNode(
+          `${data.id} 에서 보낸 메시지 : ${data.message}`
+        );
+        ptag.appendChild(node);
+        log.appendChild(ptag);
+        //console.log(data.id, "에서 보낸 메시지 : ", data.message);
+      });
+
+      const input = () => {
+        let data = document.getElementById("input_msg").value;
+        socket.emit("input", data);
+      };
+
+      const inputWM = () => {
+        let data = document.getElementById("input_msg").value;
+        socket.emit("inputWM", data);
+      };
+
+      const privatemsg = () => {
+        let data = document.getElementById("input_msg").value;
+        let id = document.getElementById("input_id").value;
+        socket.emit("private", id, data);
+      };
     </script>
   </head>
   <body>
-    <div>Hello world!</div>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-3"></div>
+        <div class="col-6">
+          <div id="myid"></div>
+          <div id="msg"></div>
+          <form action="#">
+            <input
+              type="text"
+              class="form-control mb-3"
+              id="input_msg"
+              placeholder="보낼메시지"
+              autocomplete="off"
+            />
+            <input
+              type="text"
+              class="form-control mb-3"
+              id="input_id"
+              placeholder="수신ID"
+              autocomplete="off"
+            />
+          </form>
+          <button class="btn btn-primary mb-3" onclick="input()">
+            모두에게
+          </button>
+          <button class="btn btn-primary mb-3" onclick="inputWM()">
+            나빼고
+          </button>
+          <button class="btn btn-primary mb-3" onclick="privatemsg()">
+            특정사용자에게
+          </button>
+        </div>
+        <div class="col-3"></div>
+      </div>
+    </div>
     <script src="/javascripts/index.js"></script>
   </body>
 </html>
