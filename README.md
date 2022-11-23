@@ -1,2 +1,3 @@
-# express_socket
-express 환경에서 socket 연결을 하는 샘플 프로젝트입니다.
+# Coding Assignment #3
+오늘도 평화로운 1호선
+: 서울 1호선 역명으로 제한
