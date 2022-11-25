@@ -1,4 +1,6 @@
 const { Server } = require("socket.io");
+const stations = require("./station");
+
 
 const socketHandler = (server) => {
   const io = new Server(server, {
@@ -9,47 +11,147 @@ const socketHandler = (server) => {
   });
 
   let user = {};
+  let game_user = [];
+  let start = 0;
+  let new_station = {};
 
   io.on("connection", (socket) => {
     // 접속 시 서버에서 실행되는 코드
     const req = socket.request;
     const socket_id = socket.id;
-    const client_ip =
-      req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    const client_ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
     console.log("connection!");
     console.log("socket ID : ", socket_id);
     console.log("client IP : ", client_ip);
 
-    user[socket.id] = { nickname: "users nickname", point: 0 };
+    user[socket.id] = { nickname: '', score: 0 };
 
     socket.on("disconnect", () => {
       // 사전 정의 된 callback (disconnect, error)
-      //console.log(socket.id, " client disconnected");
+      console.log(socket.id, " client disconnected");
       delete user[socket.id];
+
+      if(socket.id in game_user){
+        game_user = [];
+        io.to("game").emit('disconnected', {id: socket.id});
+      }
     });
-    socket.on("event1", (msg) => {
-      // 생성한 이벤트 이름 event1 호출 시 실행되는 callback
-      console.log(msg);
+
+    // 처음 서버에 연결 될 때 클라이언트에게 id 전송
+    socket.on("isConnect", (msg) => {
+      //console.log(user);
       socket.emit("getID", socket.id);
     });
 
-    // 모두에게
-    socket.on("input", (data) => {
-      io.emit("msg", { id: socket.id, message: data });
-      //console.log(socket.id, " 가 보낸 메시지 : ", data);
-      console.log(user);
+    // UserList 받기
+    socket.on("newUser", (data) => {
+      // login 방 생성
+      const roomName = 'login';
+      socket.join(roomName);
+
+      user[socket.id].nickname = data;
+
+      // 자신의 data 받기
+      socket.emit("getData", user[socket.id]);
+
+      // login에게 userList를 전송
+       io.to(roomName).emit("userList", Object.fromEntries(Object.entries(user).filter(([key, value]) => value.nickname != '')));
     });
 
-    // 본인 제외한 모든 소켓
-    socket.on("inputWM", (data) => {
-      socket.broadcast.emit("msg", { id: socket.id, message: data });
-      //console.log(data, " 를 받았는데, 본인 빼고 broadcast 해야함");
+    // Game 시작
+    socket.on("GameRoom", function(data){
+      // 새로운 stations 생성
+      new_station = JSON.parse(JSON.stringify(stations));
+
+      // page 이동으로 다시 저장
+      user[socket.id].nickname = data[0];
+      user[socket.id].score = data[1];
+
+      game_user.push(socket.id);
+
+      // game room 생성
+      const roomName = 'game';
+      socket.join(roomName);
+
+      let game_id = io.of("/").adapter.rooms.get('game');
+
+      io.to(roomName).emit('GameUser', Object.fromEntries(Object.entries(user).filter(([key, value]) => 
+        game_id.has(key))));
+
+      
+      if(game_user.length == 3){
+        start = 0;
+        io.to(roomName).emit('start', game_user[0]);
+      }
     });
 
-    // 특정 소켓
-    socket.on("private", (id, data) => {
-      io.to(id).emit("msg", { id: socket.id, message: data });
-      //console.log(socket.id, " 가 ", id, " 에게 보내는 메시지 : ", data);
+    // beforeStart
+    socket.on('beforeStart', (id, data) => {
+      let before = 4;
+      const cdb = setInterval(() => {
+        if(before != 0){
+          // 그룹 모두에게
+          io.to("game").emit('beforedown', {number: `${before}`});
+          before --;
+        }
+        else{
+          clearInterval(cdb);
+          // 시작 user에게
+          io.to(game_user[0]).emit('beforedown', {number: `${before}`});
+        }
+      }, 1000);
+
+    });
+
+    // countdown
+    socket.on('countdownbtn', (data) => {
+      isStop = false;
+      counter = 10;
+      
+      // id 전송
+      io.to("game").emit('order', {now: game_user[start % 3], next: game_user[(start % 3 + 1) % 3]});
+      start ++ ;
+
+      const cdb = setInterval(() => {
+        if(!isStop){
+          if(counter == 0){
+            console.log('턴 종료!');
+            clearInterval(cdb);
+            io.to("game").emit('GameOver', {id: socket.id});
+          }
+          else{
+            counter --;
+            game_user = [];
+            io.to("game").emit('countdown', {number: `${counter}`});
+          }
+        }
+        else{
+          clearInterval(cdb);
+        }
+      }, 1000);
+    });
+
+    // 답 전송
+    socket.on('answer', function(msg){
+      io.to("game").emit('broadcast', {nickname: user[socket.id].nickname, answer: msg});
+      isStop = true;
+      if(msg in Object.keys(new_station)){
+        if(new_station[msg] == 0){
+          new_station[msg] = 1;
+          // 새로운 order
+          io.to("game").emit('order', {now: game_user[start % 3], next: game_user[(start % 3 + 1) % 3]});
+          // 다음 사람 차례
+          io.to("game").emit('start', game_user[start % 3]);
+        }
+        else{
+          // 중복 답안
+          io.to("game").emit('GameOver', {id: socket.id});
+        }
+      }
+      else{
+        // 1호선이 아님
+        io.to("game").emit('GameOver', {id: socket.id});
+      }
     });
   });
 };

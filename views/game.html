@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+    <script
+      src="https://cdn.socket.io/4.5.3/socket.io.min.js"
+      integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body class="page" id="index">
+    <!-- 상단 바 생성 -->
+    <nav class="navbar navbar-dark bg-warning justify-content-center navbar-fixed-top">
+        <span class="navber-text mb-0 h1" style="color:white;"><b>게임</b></span>   
+    </nav>
+    <!-- login form 생성 -->
+    <form class = "p-3">
+      <div class="mb-3 row container-fluid">
+        <div class="row p-3">
+          <h3 style='font-weight:bold; color:red;' id="operator">5초 뒤에 게임이 시작됩니다.</h3>
+          <h6 style='font-weight:bold; color:red;' id="order">시작 Nickname: 다음 Nickname:</h6>
+        </div>
+        <div class="row p-3">
+          <div class="col-3">
+            <label for="exampleInputId1" class="form-label"><h3 style='font-weight:bold;' id="user1">user1</h3></label>
+            <input type="text" class="form-control" id="station">
+            <button type="button" class="btn btn-warning my-2" style='color:white; font-weight:bold;' id="summitbtn" onclick="answer()">submit</button>
+            <p id="score1">Score: </p>
+          </div>
+          <div class="col-6" id="middle">
+          </div>
+          <div class="col-3">
+            <div class="row">
+              <h3 id="user2" style='font-weight:bold;'>user2</h3>
+              <p id="score2">Score: </p>
+            </div>
+            <div class="row my-5">
+              <h3 id="user3" style='font-weight:bold;'>user3</h3>
+              <p id="score3">Score: </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3" crossorigin="anonymous"></script>
+  </body>
+  <script>
+    let user = {};
+    let user_id = {user1: "", user2: "", user3: ""};
+
+    // user 정보 저장하기
+    const  socket = io();
+    socket.on("connect", () => {
+      socket.emit("isConnect", "hi!!");
+
+      const nickname = sessionStorage.getItem('nickname');
+      const score = sessionStorage.getItem('score');
+
+      socket.emit("GameRoom", [nickname, score]);
+    });
+
+    // id 저장
+    socket.on("getID", (data) => {
+      user_id.user1 = data;
+    });
+
+    // user 저장
+    socket.on("GameUser", (data) => {
+      user = data
+      if(Object.keys(user).length == 3){
+        set_User();
+      }
+    });
+
+    // user 저장
+    socket.on("order", (data) => {
+
+      let now_id = data.now;
+      let next_id = data.next;
+     
+      const order = document.getElementById('order');
+      order.innerText = "시작 Nickname:" + user[now_id].nickname + "  다음 Nickname:" + user[next_id].nickname;
+
+    });
+
+    // 게임 시작 전 화면에 시간 표시
+    socket.on("beforedown", (data) => {
+      let number = data.number;
+
+      const operator = document.getElementById('operator');
+      if(number != 0){
+        operator.innerText = number + '초 뒤에 게임이 시작됩니다.';
+      }
+      else{
+        operator.innerText = '0초 뒤에 게임이 시작됩니다.';
+        socket.emit("countdownbtn", "beforedown");
+      };
+    });
+
+     // 게임 시작
+    socket.on("start", (data) => {
+      
+      if(data == user_id.user1){
+        socket.emit("beforeStart", "");
+
+        const btn = document.getElementById('summitbtn');
+        btn.disabled = false;
+      }
+
+      else{
+        const btn = document.getElementById('summitbtn');
+        btn.disabled = true;
+      }
+    });
+
+    // 화면에 시간 표시
+    socket.on("countdown", (data) => {
+      let number = data.number;
+
+      const operator = document.getElementById('operator');
+      operator.innerText = '게임이 시작되었습니다. 남은 시간: ' + number;
+    });
+
+    // 화면에 답 표시
+    socket.on("broadcast", (data) => {
+      document
+          .getElementById("middle")
+          .appendChild(
+            document
+              .createElement("p")
+              .appendChild(document.createTextNode(data.nickname + " : " + data.answer))
+      );
+    });
+
+    // 게임 종료
+    socket.on("GameOver", (data) => {
+      // 이긴 사람 스코어 증가
+      if(user_id.user1 != data.id){
+        window.sessionStorage.setItem("score", Number(user[user_id.user1].score) + 1);
+      }
+    });
+
+    // user disconnected
+    socket.on("disconnected", (data) => {
+      window.location.href = '/game';
+    });
+
+    // html에 표시
+    function set_User(){
+      const user1 = document.getElementById('user1');
+      const user2 = document.getElementById('user2');
+      const user3 = document.getElementById('user3');
+
+      const score1 = document.getElementById('score1');
+      const score2 = document.getElementById('score2');
+      const score3 = document.getElementById('score3');
+      
+      user1.innerText = user[user_id.user1].nickname;
+      score1.innerText = "Score: " + user[user_id.user1].score;
+
+      Object.keys(user).forEach((id) => {
+        if(id != user_id.user1 & user_id.user2 == ""){
+          user_id.user2 = id;
+          score2.innerText = "Score: " + user[user_id.user2].score;
+        }
+
+        else if(id != user_id.user1 & user_id.user3 == ""){
+          user_id.user3 = id;
+          score3.innerText = "Score: " + user[user_id.user3].score;
+        }
+      });
+
+      user2.innerText = user[user_id.user2].nickname;
+      user3.innerText = user[user_id.user3].nickname;
+    }
+
+  window.onload = function(){
+    const btn = document.getElementById('summitbtn');
+    btn.disabled = true;
+  };
+
+  function answer(){
+    const answer = document.getElementById('station').value;
+
+    if(answer != ""){
+      socket.emit("answer", answer);
+    }
+    else{
+      alert('역명을 입력해 주세요');
+    }
+  }
+  </script>
+</html>
