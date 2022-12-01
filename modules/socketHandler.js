@@ -14,6 +14,7 @@ const socketHandler = (server) => {
   let game_user = [];
   let start = 0;
   let new_station = {};
+  let isStop;
 
   io.on("connection", (socket) => {
     // 접속 시 서버에서 실행되는 코드
@@ -31,15 +32,20 @@ const socketHandler = (server) => {
       console.log(socket.id, " client disconnected");
       delete user[socket.id];
 
-      if(socket.id in game_user){
-        game_user = [];
+      if(game_user.includes(socket.id)){
+
+        game_user = game_user.filter(function(data) {
+          return data != socket.id;
+        });
+
         io.to("game").emit('disconnected', {id: socket.id});
+        socket.leave('game');
       }
+      socket.leave('login');
     });
 
     // 처음 서버에 연결 될 때 클라이언트에게 id 전송
     socket.on("isConnect", (msg) => {
-      //console.log(user);
       socket.emit("getID", socket.id);
     });
 
@@ -78,7 +84,7 @@ const socketHandler = (server) => {
       io.to(roomName).emit('GameUser', Object.fromEntries(Object.entries(user).filter(([key, value]) => 
         game_id.has(key))));
 
-      
+      console.log(game_user.length);
       if(game_user.length == 3){
         start = 0;
         io.to(roomName).emit('start', game_user[0]);
@@ -87,20 +93,26 @@ const socketHandler = (server) => {
 
     // beforeStart
     socket.on('beforeStart', (id, data) => {
-      let before = 4;
-      const cdb = setInterval(() => {
-        if(before != 0){
-          // 그룹 모두에게
-          io.to("game").emit('beforedown', {number: `${before}`});
-          before --;
-        }
-        else{
-          clearInterval(cdb);
-          // 시작 user에게
-          io.to(game_user[0]).emit('beforedown', {number: `${before}`});
-        }
-      }, 1000);
 
+      if(start == 0){
+          let before = 4;
+          const cdb1 = setInterval(() => {
+            if(before != 0){
+              // 그룹 모두에게
+              io.to("game").emit('beforedown', {number: `${before}`});
+              before --;
+            }
+            else{
+              clearInterval(cdb1);
+              // 시작 user에게
+              io.to(game_user[0]).emit('beforedown', {number: `${before}`});
+            }
+          }, 1000);
+        }
+      
+      else{
+        io.to(game_user[start % 3]).emit('beforedown', {number: `${0}`});
+      }
     });
 
     // countdown
@@ -112,30 +124,35 @@ const socketHandler = (server) => {
       io.to("game").emit('order', {now: game_user[start % 3], next: game_user[(start % 3 + 1) % 3]});
       start ++ ;
 
-      const cdb = setInterval(() => {
+      console.log('start');
+
+      const cdb2 = setInterval(() => {
+        console.log(counter);
         if(!isStop){
           if(counter == 0){
             console.log('턴 종료!');
-            clearInterval(cdb);
+            clearInterval(cdb2);
             io.to("game").emit('GameOver', {id: socket.id});
           }
           else{
             counter --;
-            game_user = [];
             io.to("game").emit('countdown', {number: `${counter}`});
           }
         }
         else{
-          clearInterval(cdb);
+          clearInterval(cdb2);
         }
       }, 1000);
+
     });
 
     // 답 전송
     socket.on('answer', function(msg){
       io.to("game").emit('broadcast', {nickname: user[socket.id].nickname, answer: msg});
+
       isStop = true;
-      if(msg in Object.keys(new_station)){
+
+      if(Object.keys(new_station).includes(msg)){
         if(new_station[msg] == 0){
           new_station[msg] = 1;
           // 새로운 order
@@ -145,11 +162,13 @@ const socketHandler = (server) => {
         }
         else{
           // 중복 답안
+          console.log('중복');
           io.to("game").emit('GameOver', {id: socket.id});
         }
       }
       else{
         // 1호선이 아님
+        console.log('답이 아님');
         io.to("game").emit('GameOver', {id: socket.id});
       }
     });
