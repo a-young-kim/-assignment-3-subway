@@ -1,11 +1,11 @@
 const { Server } = require("socket.io");
 const stations = require("./station");
 
-
+// "http://34.193.68.110"
 const socketHandler = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: "http://34.193.68.110",
+      origin: "http://localhost:3000",
       methods: ["GET", "POST"],
     },
   });
