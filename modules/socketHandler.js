@@ -88,6 +88,10 @@ const socketHandler = (server) => {
         else if(end_id.has(socket.id)){
           socket.join("game");
         }
+
+        else{
+          io.to(socket.id).emit('wait',"");
+        }
       }
       else if(game_id.size != 3){
         if(end_id == undefined){
@@ -115,6 +119,10 @@ const socketHandler = (server) => {
           if(game_id.size == 3){
             io.to('game').emit('set_user',"");
           }
+        }
+        
+        else{
+          io.to(socket.id).emit('wait',"");
         }
       }
 
