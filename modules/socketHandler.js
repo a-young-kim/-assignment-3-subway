@@ -5,7 +5,7 @@ const stations = require("./station");
 const socketHandler = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: "http://localhost:3000",
+      origin: "http://34.193.68.110",
       methods: ["GET", "POST"],
     },
   });
