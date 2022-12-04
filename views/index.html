@@ -55,6 +55,11 @@
       window.sessionStorage.setItem("score", data.score);
     });
 
+    socket.on('wait', (data) => {
+      const message = document.getElementById('message');
+      message.innerText = "먼저 접속한 클라이언트들 간 게임이 진행 중입니다.";
+    });
+
   
     // 버튼을 누르면 이름 전송 
     function ready(){

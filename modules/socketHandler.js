@@ -75,38 +75,53 @@ const socketHandler = (server) => {
       socket.emit("getData", user[socket.id]);
 
       let end_id = io.of('/').adapter.rooms.get('end');
+      let game_id = io.of("/").adapter.rooms.get('game');
       console.log("end", end_id);
-   
-      if(end_id == undefined){
-        socket.join("game");
-        let game_id = io.of("/").adapter.rooms.get('game');
-        console.log('game', game_id);
+      console.log('game', game_id);
+      
+      if(game_id == undefined)
+      {
+        if(end_id == undefined){
+           socket.join("game");
+        }
 
-        if(game_id.size == 3){
-          io.to('game').emit('set_user',"");
+        else if(end_id.has(socket.id)){
+          socket.join("game");
         }
       }
-
-      else if(end_id.size != 3){
-        socket.join("game");
-        let game_id = io.of("/").adapter.rooms.get('game');
-        console.log('game', game_id);
-        if(game_id.size == 3){
-          io.to('game').emit('set_user',"");
-        }
-      }
-
-      else if(end_id.size == 3){
-        if(end_id.has(socket.id)){
+      else if(game_id.size != 3){
+        if(end_id == undefined){
           socket.join("game");
           let game_id = io.of("/").adapter.rooms.get('game');
           console.log('game', game_id);
+          if(game_id.size == 3){
+            io.to('game').emit('set_user',"");
+          }
+        }
 
+        else if(end_id.has(socket.id)){
+          socket.join("game");
+          let game_id = io.of("/").adapter.rooms.get('game');
+          console.log('game', game_id);
+          if(game_id.size == 3){
+            io.to('game').emit('set_user',"");
+          }
+        }
+        
+        else if(end_id.size == game_id.size){
+          socket.join("game");
+          let game_id = io.of("/").adapter.rooms.get('game');
+          console.log('game', game_id);
           if(game_id.size == 3){
             io.to('game').emit('set_user',"");
           }
         }
       }
+
+      else{
+        io.to(socket.id).emit('wait',"");
+      }
+    
     });
 
     // Game 시작
@@ -240,4 +255,6 @@ const socketHandler = (server) => {
     });
   });
 };
+
+
 module.exports = socketHandler;
