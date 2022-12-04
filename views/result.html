@@ -79,16 +79,15 @@
       user = data; 
      
       Object.keys(user).forEach((id) => {
-      if(id != user_id.user1 & user_id.user2 == ""){
-        user_id.user2 = id;
-      }
+        if((id != user_id.user1) & (user_id.user2 == "")){
+          user_id.user2 = id;
+        }
 
-      else if(id != user_id.user1 & user_id.user3 == ""){
-        user_id.user3 = id;
-      }
-    });
-    set_User();
-      
+        else if((id != user_id.user1) & (user_id.user3 == "")){
+          user_id.user3 = id;
+        }
+      });
+      set_User();
     });
 
     // user disconnected
