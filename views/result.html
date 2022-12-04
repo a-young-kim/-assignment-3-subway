@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Result</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+    <script
+      src="https://cdn.socket.io/4.5.3/socket.io.min.js"
+      integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body class="page">
+    <!-- 상단 바 생성 -->
+    <nav class="navbar navbar-dark bg-warning justify-content-center navbar-fixed-top">
+        <span class="navber-text mb-0 h1" style="color:white;" id="result"><b>결과</b></span>   
+    </nav> 
+    <!-- login form 생성 -->
+    <form class = "p-3">
+      <div class="mb-3 row container-fluid">
+        <div class="row p-3">
+        </div>
+        <div class="row p-3">
+          <div class="col-3"></div>
+          <div class="col-6">
+             <p id="user_id"></p>
+          </div>
+        </div>
+        <div class="row p-3">
+          <div class="col-3"></div>
+          <div class="col-6">
+             <p>- 전체 이름 별 누적 점수</p>
+             <p id="user1">user1 : </p>
+             <p id="user2">user2 : </p>
+             <p id="user3">user3 : </p>
+          </div>
+        </div>
+        <div class="row p-3">
+          <div class="col-3"></div>
+          <div class="col-6" id="message"></div>
+        </div>
+        <div class="row p-3">
+          <div class="col-3"></div>
+          <div class="col-6">
+            <button type="button" class="btn btn-warning mx-2" style='color:white; font-weight:bold;' onclick="retry()">Retry</button>
+          </div>
+        </div>
+      </div>
+    </form>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3" crossorigin="anonymous"></script>
+  </body>
+  <script>
+    let user = {};
+    let user_id = {user1: "", user2: "", user3: ""};
+    let btn = 0;
+    let disconnect = 0;
+
+   // user 정보 저장하기
+   const  socket = io();
+    socket.on("connect", () => {
+      socket.emit("isConnect", "hi!!");
+
+      const nickname = sessionStorage.getItem('nickname');
+      const score = sessionStorage.getItem('score');
+
+      socket.emit("EndRoom", [nickname, score]);
+    });
+
+    // id 저장
+    socket.on("getID", (data) => {
+      user_id.user1 = data;
+    });
+
+    // user 저장
+    socket.on("EndUser", (data) => {
+      user = data; 
+     
+      if(Object.keys(user).length == 3){
+          Object.keys(user).forEach((id) => {
+          if(id != user_id.user1 & user_id.user2 == ""){
+            user_id.user2 = id;
+          }
+
+          else if(id != user_id.user1 & user_id.user3 == ""){
+            user_id.user3 = id;
+          }
+        });
+        set_User();
+      }
+    });
+
+    // user disconnected
+    socket.on("disconnected", (data) => {
+        disconnect = 1;
+
+      if(btn == 1){
+        const message = document.getElementById('message');
+        message.innerText = "참가자를 기다리는 중";
+      }
+    });
+
+    socket.on("set_user", (data) => {
+      message.innerText = "게임이 시작됩니다.";
+      window.location.href = '/game';
+    });
+
+    // html에 표시
+    function set_User(){
+      const userid = document.getElementById('user_id');
+      userid.innerText = "YOUR ID: " + user[user_id.user1].nickname;
+
+      const user1 = document.getElementById('user1');
+      const user2 = document.getElementById('user2');
+      const user3 = document.getElementById('user3');
+      
+      user1.innerText = user[user_id.user1].nickname + " : " + user[user_id.user1].score;
+      user2.innerText = user[user_id.user2].nickname + " : " + user[user_id.user2].score;
+      user3.innerText = user[user_id.user3].nickname + " : " + user[user_id.user3].score;
+
+      const result = document.getElementById('result');
+
+      const isWin = sessionStorage.getItem('isWin');
+
+      if(isWin == 'True'){
+        result.innerHTML = '<b>WIN</b>'
+      }
+      
+      else{
+        result.innerHTML = '<b>LOSE</b>'
+      }
+    }
+
+    window.onload = function(){
+    const GameRoom = sessionStorage.getItem('GameRoom');
+
+    if(GameRoom == 'True'){
+        window.sessionStorage.setItem("GameRoom", 'True');
+    }
+
+    else{
+        window.location.href = '/';
+    }
+  };
+
+  // 버튼을 누르면 이름 전송 
+  function retry(){
+    const nickname = sessionStorage.getItem('nickname');
+    const score = sessionStorage.getItem('score');
+
+    socket.emit("newUser", [nickname, score]);
+
+    const message = document.getElementById('message');
+    message.innerText = "상대방의 선택을 기다리는 중";
+
+    if(disconnect == 1){
+      const message = document.getElementById('message');
+      message.innerText = "참가자를 기다리는 중";
+    }
+    btn = 1;
+  };
+  </script>
+</html>

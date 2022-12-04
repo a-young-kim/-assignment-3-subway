@@ -1,6 +1,11 @@
 window.onload = function(){
     const btn = document.getElementById('summitbtn');
     btn.disabled = true;
+
+    window.sessionStorage.setItem("isLogin", 'False');
+    window.sessionStorage.setItem("GameRoom", 'False');
+    window.sessionStorage.setItem("nickname", '');
+    window.sessionStorage.setItem("score", '');
 };
 
 function check_name(){

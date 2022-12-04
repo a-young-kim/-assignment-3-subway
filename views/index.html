@@ -61,22 +61,15 @@
       const name = document.getElementById('name').value;
 
       socket.emit("newUser", name);
-    }
-
-    // user 목록 
-    socket.on("userList", (data) => {
-      user = data;
-      console.log(user);
-
+      window.sessionStorage.setItem("isLogin", 'True');
       const message = document.getElementById('message');
-      if(Object.keys(user).length < 3){
-          message.innerText = "다른 게임 참가자를 기다리고 있겠습니다.";
-      }
-
-      else if(Object.keys(user).length == 3){
-        message.innerText = "게임이 시작됩니다.";
-        window.location.href = '/game';
-      }
+      message.innerText = "다른 게임 참가자를 기다리고 있겠습니다.";
+         
+    }
+    socket.on("set_user", (data) => {
+      message.innerText = "게임이 시작됩니다.";
+      window.location.href = '/game';
     });
+    
   </script>
 </html>
